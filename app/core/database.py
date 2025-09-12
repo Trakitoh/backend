@@ -1,5 +1,8 @@
 from typing import Annotated
+from datetime import datetime
+
 from fastapi import Depends
+from sqlalchemy import TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker, AsyncAttrs
 
@@ -8,13 +11,17 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 engine = create_async_engine(url="sqlite+aiosqlite:///dev.db")
 # expire_on_commit prevents database calls to refresh entity
 #    - needed for async since all db calls must be awaited (?); and implicit db calls aren't async
+#    - allows to work with entities without having to reload them from database
 # session is ORM interface for interacting with database tables & entities
 sesh = async_sessionmaker(engine, expire_on_commit=False)
 
 # Needed to establish ORM models/tables
 # AsyncAttrs is to enable async loading of attributes that are lazy loaded by default
 class Base(AsyncAttrs, DeclarativeBase):
-    pass
+    # https://docs.sqlalchemy.org/en/20/orm/declarative_tables.html#customizing-the-type-map
+    type_annotation_map = {
+        datetime: TIMESTAMP(timezone=True)
+    }
 
 async def init_db():
     async with engine.begin() as conn:
